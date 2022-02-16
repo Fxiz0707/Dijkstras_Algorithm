@@ -49,9 +49,9 @@ public:
 struct MinHeap
 {
 private:
-	std::vector<int> mData;
-	std::vector<int> mPositions; // mPositions[i] holds the position in mData of node 'i'
-
+	std::vector<int> mTree;
+	std::vector<int> mPositions; // mPositions[i] holds the position in mTree of node 'i' (decrease_key is the only function where mPositions is accessed)
+	
 public:
 
 	/**
@@ -70,27 +70,31 @@ public:
 	 */
 	void insert(int u, int* distances)
 	{
-		mData.push_back(u);
-		int i = mData.size() - 1;
+		mTree.push_back(u);
+		int i = mTree.size() - 1;
 		mPositions[u] = i; 
 
 		// Bubbling UP 
 		while (i != 0) 
 		{
-			if (distances[mData[i]] < distances[mData[(i - 1) / 2]]) // parent key > child key
+			int parentKeyIndex = (i - 1) / 2; 
+
+			if (distances[mTree[i]] < distances[mTree[parentKeyIndex]]) // child key < parent key 
 			{
 				// swap parent and child key 
+				int temp = mTree[parentKeyIndex];
+				mTree[parentKeyIndex] = mTree[i];
+				mTree[i] = temp;
 
-				int temp = mData[(i - 1) / 2];
-				mData[(i - 1) / 2] = mData[i];
-				mData[i] = temp;
+				mPositions[mTree[parentKeyIndex]] = parentKeyIndex;
+				mPositions[mTree[i]] = i;
 
-				mPositions[mData[(i - 1) / 2]] = i; 
-				mPositions[mData[i]] = (i - 1)/2;
-
-				i /= 2;
+				i = parentKeyIndex; 
 			}
-			else break; 
+			else
+			{
+				break; 
+			}
 		}
 	}
 
@@ -102,25 +106,28 @@ public:
 	void decrease_key(int u, int* distances) // It is assumed, within the distance array, only one key has been changed 
 	{
 		int i = mPositions[u];
-		if (i == -1) return; 
+		if (i == -1) return;
 
-		// Bubbling UP
 		while (i != 0)
 		{
-			if (distances[mData[i]] < distances[mData[(i - 1) / 2]]) // parent key > child key
+			int parentNodeIndex = (i - 1) / 2; 
+
+			if (distances[mTree[i]] < distances[mTree[parentNodeIndex]]) // child key < parent key 
 			{
 				// swap parent and child key
+				int temp = mTree[parentNodeIndex];
+				mTree[parentNodeIndex] = mTree[i];
+				mTree[i] = temp;
 
-				int temp = mData[(i - 1) / 2];
-				mData[(i - 1) / 2] = mData[i];
-				mData[i] = temp;
+				mPositions[mTree[parentNodeIndex]] = parentNodeIndex;
+				mPositions[mTree[i]] = i;
 
-				mPositions[mData[(i - 1) / 2]] = i;
-				mPositions[mData[i]] = (i - 1) / 2;
-
-				i /= 2;
+				i = parentNodeIndex; 
 			}
-			else break; 
+			else
+			{
+				break; 
+			}
 		}
 	}
 
@@ -131,36 +138,51 @@ public:
 	 */
 	int extract_min(int* distances) 
 	{
-		int min = mData[0];
-		mData[0] = mData[mData.size() - 1]; // swapping the first element in the array with the last, so that we can bubble down
-		mData.pop_back();
+		int min = mTree[0];
+		mTree[0] = mTree[mTree.size() - 1]; // swapping the first element in the array with the last, so that we can bubble down
+		mTree.pop_back(); 
 
-		if (mData.size() == 0) return min; // There is nothing to bubble, the last node has been popped from the Heap 
+		if (mTree.size() == 0) return min; // There is nothing to bubble, the last node has been popped from the Heap 
 
-		mPositions[mData[0]] = 0;
-		mPositions[min] = -1; // This node is no longer in the Heap 
+		mPositions[mTree[0]] = 0;
+		mPositions[min] = -1; // This node is no longer in the Heap
 
 		int i = 0;
+
 		// Bubbling DOWN 
-		while (i < mData.size())
+		while (i < mTree.size())
 		{
 			int smallerChildIndex = -1;
-			if (distances[2 * i + 1] < distances[2 * i + 2]) // We need to swap with the smaller of the two child nodes 
-			{
-				smallerChildIndex = 2 * i + 1;
-			}
-			else smallerChildIndex = 2 * i + 2;
+			int leftChildIndex = 2 * i + 1;
+			int rightChildIndex = 2 * i + 2;
 
-			if (distances[smallerChildIndex] < distances[i]) // parent key > smaller of the two child keys 
+			if (leftChildIndex >= mTree.size())
+			{
+				break;
+			}
+
+			if (rightChildIndex >= mTree.size())
+			{
+				smallerChildIndex = leftChildIndex;
+			}
+			else if (distances[mTree[leftChildIndex]] <= distances[mTree[rightChildIndex]])
+			{
+				smallerChildIndex = leftChildIndex;
+			}
+			else
+			{
+				smallerChildIndex = rightChildIndex; 
+			}
+
+			if (distances[mTree[smallerChildIndex]] < distances[mTree[i]]) // child key < parent key 
 			{
 				// swap parent and child key 
+				int temp = mTree[i];
+				mTree[i] = mTree[smallerChildIndex];
+				mTree[smallerChildIndex] = temp;
 
-				int temp = mData[i];
-				mData[i] = mData[smallerChildIndex];
-				mData[smallerChildIndex] = temp;
-
-				mPositions[mData[i]] = smallerChildIndex;
-				mPositions[mData[smallerChildIndex]] = i;
+				mPositions[mTree[i]] = i;
+				mPositions[mTree[smallerChildIndex]] = smallerChildIndex; 
 
 				i = smallerChildIndex;
 			}
@@ -176,10 +198,9 @@ public:
 	 */
 	bool is_empty()
 	{
-		return (mData.size() == 0); 
+		return (mTree.size() == 0); 
 	}
 };
-
 
 /**
  * \brief Dijkstra's running in time complexity O((n + m) * log(n)) 
@@ -204,11 +225,11 @@ void dijkstras_algorithm(Graph graph)
 
 	while (!queue.is_empty()) // O((n + m) * log(n))
 	{
-
 		// extract_min is ran once for every node. Therefore adds time complexity O(n * log(n))
 		int minIndex = queue.extract_min(shortest);
 
 		std::list<Edge> edges = graph.get_edges(minIndex); 
+
 
 		for (auto it = edges.begin(); it != edges.end(); it++)  
 		{
@@ -225,26 +246,39 @@ void dijkstras_algorithm(Graph graph)
 
  int main()
 {
-	Graph graph = Graph(6);
-	graph.add_edge(0, 1, 5); 
-	graph.add_edge(0, 2, 2); 
-	graph.add_edge(0, 3, 6); 
-	graph.add_edge(1, 4, 4); 
-	graph.add_edge(2, 3, 2); 
-	graph.add_edge(2, 5, 12); 
-	graph.add_edge(3, 4, 4); 
+	Graph graph = Graph(9);
+	// directed edges
+	graph.add_edge(0, 2, 2);
+	graph.add_edge(2, 3, 5);
+	graph.add_edge(3, 0, 5); 
+	graph.add_edge(4, 3, 1);
+	graph.add_edge(5, 6, 1);
+	graph.add_edge(6, 7, 2); 
+
+	// undirected edges 
+	graph.add_edge(0, 1, 5);
+	graph.add_edge(1, 4, 4);
+	graph.add_edge(1, 2, 2);
+	graph.add_edge(2, 4, 3);
+	graph.add_edge(4, 6, 11);
+	graph.add_edge(4, 5, 9);
 	graph.add_edge(3, 5, 8); 
-	graph.add_edge(4, 5, 3);
+	graph.add_edge(5, 7, 5);
+	graph.add_edge(5, 8, 7);
+	graph.add_edge(3, 8, 14);
+	graph.add_edge(7, 8, 2); 
 
 	graph.add_edge(1, 0, 5);
-	graph.add_edge(2, 0, 2);
-	graph.add_edge(3, 0, 6);
 	graph.add_edge(4, 1, 4);
-	graph.add_edge(3, 2, 2);
-	graph.add_edge(5, 2, 12);
-	graph.add_edge(4, 3, 4);
+	graph.add_edge(2, 1, 2);
+	graph.add_edge(4, 2, 3);
+	graph.add_edge(6, 4, 11);
+	graph.add_edge(5, 4, 9);
 	graph.add_edge(5, 3, 8);
-	graph.add_edge(5, 4, 3);
+	graph.add_edge(7, 5, 5);
+	graph.add_edge(8, 5, 7);
+	graph.add_edge(8, 3, 14);
+	graph.add_edge(8, 7, 2); 
 
 	dijkstras_algorithm(graph);
 }
